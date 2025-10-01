@@ -1,0 +1,5 @@
+try:
+    config = pdfkit.configuration()
+    pdfkit.from_string('测试', 'test.pdf', configuration=config)
+# 修改为实际安装路径
+wkhtmltopdf_path = r'D:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'

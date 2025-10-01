@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>专利审查AI助手</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .header {
+            background-color: #0a3d62;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .left-panel {
+            width: 25%;
+            background-color: #f5f7fa;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .middle-panel {
+            width: 50%;
+            overflow-y: auto;
+            padding: 1rem;
+            background-color: #ffffff;
+        }
+        .right-panel {
+            width: 25%;
+            background-color: #f5f7fa;
+            border-left: 1px solid #ddd;
+            padding: 1rem;
+            overflow-y: auto;
+        }
+        .panel-title {
+            padding: 0.5rem 1rem;
+            background-color: #eaecef;
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+        }
+        .prompt-buttons {
+            padding: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            border-bottom: 1px solid #ddd;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .prompt-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        .prompt-btn:hover {
+            background-color: #2980b9;
+        }
+        .prompt-area {
+            flex: 1;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow: hidden;
+        }
+        #prompt-input {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0.75rem;
+            resize: none;
+            font-family: inherit;
+            font-size: 0.95rem;
+            overflow-y: auto;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .action-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .execute-btn {
+            background-color: #27ae60;
+            color: white;
+            flex: 1;
+        }
+        .execute-btn:hover {
+            background-color: #219653;
+        }
+        .upload-area {
+            padding: 1rem;
+            border-top: 1px solid #ddd;
+        }
+        #file-upload {
+            display: none;
+        }
+        .upload-btn {
+            background-color: #95a5a6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+        .upload-btn:hover {
+            background-color: #7f8c8d;
+        }
+        .uploaded-files {
+            max-height: 100px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0.5rem;
+            background-color: white;
+        }
+        .file-item {
+            font-size: 0.85rem;
+            padding: 0.25rem 0;
+            border-bottom: 1px dashed #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .file-remove {
+            color: #e74c3c;
+            cursor: pointer;
+            margin-left: 0.5rem;
+        }
+        .result-card {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .result-header {
+            background-color: #f8f9fa;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .result-title {
+            font-weight: bold;
+        }
+        .result-status {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        .result-content {
+            padding: 1rem;
+            min-height: 150px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .api-settings {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            overflow: hidden;
+            z-index: 1000;
+        }
+        .settings-header {
+            background-color: #34495e;
+            color: white;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .settings-content {
+            padding: 1rem;
+            display: none;
+        }
+        .settings-row {
+            margin-bottom: 1rem;
+        }
+        .settings-label {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .settings-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .settings-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .format-tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 1rem;
+        }
+        .format-tab {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .format-tab.active {
+            border-bottom-color: #3498db;
+            color: #3498db;
+            font-weight: bold;
+        }
+        .report-preview {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            min-height: 200px;
+            border: 1px solid #ddd;
+        }
+        .progress-bar {
+            height: 4px;
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 0.25rem;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #4caf50;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 340px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #27ae60;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 999;
+        }
+        .loading-indicator {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @media (max-width: 1200px) {
+            .main-container {
+                flex-direction: column;
+            }
+            .left-panel, .middle-panel, .right-panel {
+                width: 100%;
+                height: 33.33vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">专利审查AI助手</div>
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="panel-title d-flex justify-content-between align-items-center">
+                预设提示词
+                <button class="btn btn-sm btn-primary" id="manage-prompts-btn"><i class="fa fa-cog"></i> 管理</button>
+            </div>
+            <div class="prompt-buttons" id="prompt-buttons-container">
+                <!-- 预设提示词按钮将通过JS动态生成 -->
+            </div>
+
+            <!-- 预设提示词管理模态框 -->
+            <div class="modal fade" id="promptManagerModal" tabindex="-1" aria-labelledby="promptManagerModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="promptManagerModalLabel">管理预设提示词</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="prompt-title" class="form-label">提示词标题</label>
+                                <input type="text" class="form-control" id="prompt-title" placeholder="输入提示词标题">
+                            </div>
+                            <div class="mb-3">
+                                <label for="prompt-content" class="form-label">提示词内容</label>
+                                <textarea class="form-control" id="prompt-content" rows="4" placeholder="输入提示词内容"></textarea>
+                            </div>
+                            <input type="hidden" id="prompt-id" value="">
+                            <table class="table table-striped mt-4">
+                                <thead>
+                                    <tr>
+                                        <th>标题</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="prompts-table-body">
+                                    <!-- 提示词列表将通过JS动态生成 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                            <button type="button" class="btn btn-primary" id="save-prompt-btn">保存提示词</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-title">提示词编辑区</div>
+            <div class="prompt-area">
+                <textarea id="prompt-input" placeholder="请输入或选择提示词..."></textarea>
+                <div class="action-buttons">
+                    <button class="action-btn execute-btn" id="execute-btn">开始执行</button>
+                </div>
+            </div>
+            <div class="upload-area">
+                <button class="upload-btn" id="upload-btn"><i class="fa fa-upload"></i> 上传PDF文件</button>
+                <input type="file" id="file-upload" accept=".pdf" multiple title="选择要上传的PDF文件" onchange="console.log('选择了' + this.files.length + '个文件')">
+                <div class="uploaded-files" id="uploaded-files"></div>
+            </div>
+        </div>
+        <div class="middle-panel" id="results-container">
+            <div class="result-card">
+                <div class="result-header">
+                    <div class="result-title">结果展示区</div>
+                    <div class="result-status">等待执行</div>
+                </div>
+                <div class="result-content">
+                </div>
+            </div>
+        </div>
+        <div class="right-panel">
+            <div class="panel-title">报告预览</div>
+            <div class="format-tabs">
+                <div class="format-tab active" data-format="text">文本</div>
+                <div class="format-tab" data-format="markdown">Markdown</div>
+                <div class="format-tab" data-format="html">HTML</div>
+            </div>
+            <div class="report-preview" id="report-preview"></div>
+        </div>
+    </div>
+    <div class="floating-btn" id="generate-report-btn" title="生成报告"><i class="fa fa-file-pdf-o"></i></div>
+    <div class="api-settings" id="api-settings">
+        <div class="settings-header" id="settings-toggle">
+            <span>API设置</span>
+            <i class="fa fa-chevron-down"></i>
+        </div>
+        <div class="settings-content" id="settings-content">
+            <div class="settings-row">
+                <label class="settings-label">API密钥</label>
+                <input type="password" class="settings-input" id="api-key" placeholder="输入DeepSeek API密钥">
+            </div>
+            <div class="settings-row">
+                <label class="settings-label">基础URL</label>
+                <input type="text" class="settings-input" id="base-url" value="https://api.deepseek.com" readonly title="DeepSeek API基础URL">
+            </div>
+            <div class="settings-buttons">
+                <button class="action-btn execute-btn" id="save-api-settings">保存设置</button>
+                <button class="action-btn" id="inference-btn">推理</button>
+                <button class="action-btn" id="network-btn">联网</button>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/script.js"></script>
+</body>
+</html>
